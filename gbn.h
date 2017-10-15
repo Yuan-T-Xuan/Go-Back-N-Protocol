@@ -35,6 +35,9 @@ extern int errno;
 #define FINACK   5        /* Acknowledgement of the FIN packet           */
 #define RST      6        /* Reset packet used to reject new connections */
 
+/* for backward compatibility */
+#define h_addr h_addr_list[0]
+
 /*----- Go-Back-n packet format -----*/
 typedef struct {
 	uint8_t  type;            /* packet type (e.g. SYN, DATA, ACK, FIN)     */
