@@ -25,6 +25,7 @@ void handler(int signum) {
     if(prevtype == 0) {
         sendto(prevsockfd, &prevhdronly, sizeof(gbnhdronly), 0, prevserver, prevsocklen);
         alarm(1);
+        goto RCVAGAIN;
     } else {
         return;
     }
