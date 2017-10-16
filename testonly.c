@@ -5,7 +5,6 @@
 
 void handler(int signum) {
     printf("???\n");
-    //exit(1);
 }
 
 int main() {

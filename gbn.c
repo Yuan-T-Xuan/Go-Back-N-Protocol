@@ -1,10 +1,10 @@
 #include "gbn.h"
 
-int currstate = 0; // 0: off, 1: connected, 
-int speedmode = 0; // 0 for "slow"
+int currstate = 0; /* 0: off, 1: connected, */
+int speedmode = 0; /* 0 for "slow" */
 
 int numtried = 0;
-int prevtype = 0; // 0: gbnhdronly, 1: gbnhdronly
+int prevtype = 0; /* 0: gbnhdronly, 1: gbnhdronly */
 gbnhdronly prevhdronly;
 gbnhdr prevhdr;
 int prevsockfd;
@@ -14,7 +14,7 @@ socklen_t prevsocklen;
 int synseq;
 int seqnum = -1;
 void handler(int signum) {
-    // handle timer alarm here
+    /* handle timer alarm here */
     printf("resending ...\n");
     numtried++;
     if(numtried >= 10) {
@@ -26,12 +26,12 @@ void handler(int signum) {
         sendto(prevsockfd, &prevhdronly, sizeof(gbnhdronly), 0, prevserver, prevsocklen);
         alarm(1);
     } else {
-        // ...
+        return;
     }
 }
 
 
-//
+
 uint16_t checksum(uint16_t *buf, int nwords)
 {
     uint32_t sum;
@@ -71,24 +71,23 @@ int gbn_close(int sockfd){
 }
 
 int gbn_connect(int sockfd, const struct sockaddr *server, socklen_t socklen){
-    //
     /*
-    uint8_t  type;            // packet type (e.g. SYN, DATA, ACK, FIN)
+    uint8_t  type;
     uint8_t  seqnum;
     uint16_t checksum;
     */
     gbnhdronly synpack;
     synpack.type = SYN;
-    synseq = 0; //rand();
+    synseq = 0;
     synpack.seqnum = synseq;
     seqnum = synpack.seqnum;
     synpack.checksum = checksum(&synpack, 1);
-    //
+    
     prevhdronly = synpack;
     prevserver = server;
     prevsocklen = socklen;
     prevsockfd = sockfd;
-    //
+    
     sendto(sockfd, &synpack, sizeof(gbnhdronly), 0, server, socklen);
     alarm(1);
     gbnhdronly synackpack;
@@ -120,11 +119,10 @@ int gbn_socket(int domain, int type, int protocol){
         
     /*----- Randomizing the seed. This is used by the rand() function -----*/
     srand((unsigned)time(0));
-    //
+    
     signal(SIGALRM, handler);
     return socket(AF_INET, SOCK_DGRAM, 0);
-    //
-    //return(-1);
+    
 }
 
 int gbn_accept(int sockfd, struct sockaddr *client, socklen_t *socklen){
