@@ -101,6 +101,7 @@ int gbn_connect(int sockfd, const struct sockaddr *server, socklen_t socklen){
     prevclient.sin_family = AF_INET;
     prevclient.sin_addr.s_addr = htonl(INADDR_ANY);
     prevclient.sin_port = 56900 + (rand() % 100);
+    printf("port: %d\n", prevclient.sin_port);
     bind(sockfd, (struct sockaddr *) &prevclient, sizeof(prevclient));
     
     sendto(sockfd, &synpack, sizeof(gbnhdronly), 0, server, socklen);
