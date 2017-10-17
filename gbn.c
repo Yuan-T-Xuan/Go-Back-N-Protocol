@@ -8,7 +8,8 @@ int prevtype = 0; /* 0: gbnhdronly, 1: gbnhdronly */
 gbnhdronly prevhdronly;
 gbnhdr prevhdr;
 int prevsockfd;
-struct sockaddr *prevserver;
+struct sockaddr* prevserver;
+struct sockaddr_in prevclient;
 socklen_t prevsocklen;
 
 int synseq;
@@ -135,7 +136,19 @@ RCVAGAIN:
         synackpack.type = SYNACK;
         synackpack.seqnum = seqnum;
         synackpack.checksum = 0; /* TODO... */
-        sendto(sockfd, &synackpack, sizeof(gbnhdronly), 0, client, socklen);
+        /*
+        memset(&server, 0, sizeof(struct sockaddr_in));
+        server.sin_family = AF_INET;
+        server.sin_addr   = *(struct in_addr *)he->h_addr;
+        server.sin_port   = htons(atoi(argv[2]));
+        */
+        struct sockaddr_in * tmp = (struct sockaddr_in *)client;
+        memset(&prevclient, 0, sizeof(struct sockaddr_in));
+        prevclient.sin_family = AF_INET;
+        prevclient.sin_addr = tmp->sin_addr;
+        prevclient.sin_port = tmp->sin_port;
+
+        sendto(sockfd, &synackpack, sizeof(gbnhdronly), 0, &prevclient, socklen);
         return sockfd;
     }
     goto RCVAGAIN;
