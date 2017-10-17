@@ -94,17 +94,17 @@ int gbn_connect(int sockfd, const struct sockaddr *server, socklen_t socklen){
     prevsockfd = sockfd;
 
     /*
-    memset(&srcaddr, 0, sizeof(srcaddr));
-    srcaddr.sin_family = AF_INET;
-    srcaddr.sin_addr.s_addr = htonl(INADDR_ANY);
-    srcaddr.sin_port = htons(SRC_PORT);
+    memset(&server, 0, sizeof(struct sockaddr_in));
+	server.sin_family      = AF_INET;
+	server.sin_addr.s_addr = htonl(INADDR_ANY);
+	server.sin_port        = htons(atoi(argv[1]));
     */
     memset(&prevclient, 0, sizeof(struct sockaddr_in));
     prevclient.sin_family = AF_INET;
     prevclient.sin_addr.s_addr = htonl(INADDR_ANY);
     prevclient.sin_port = 56900 + (rand() % 100);
     printf("port: %d\n", prevclient.sin_port);
-    bind(sockfd, (struct sockaddr *) &prevclient, sizeof(prevclient));
+    bind(sockfd, (struct sockaddr *) &prevclient, sizeof(struct sockaddr_in));
     
     sendto(sockfd, &synpack, sizeof(gbnhdronly), 0, server, socklen);
     alarm(1);
@@ -113,6 +113,7 @@ int gbn_connect(int sockfd, const struct sockaddr *server, socklen_t socklen){
 RCVAGAIN:
     recvfrom(sockfd, &synackpack, sizeof(gbnhdronly), 0, &tmp, sizeof(struct sockaddr_in));
     printf("received something ...\n");
+    printf("magicsum: %d\n", synackpack.checksum);
     if(synackpack.type == SYNACK) {
         printf("received SYNACK!\n");
         alarm(0);
@@ -154,7 +155,7 @@ RCVAGAIN:
         /* send back SYNACK */
         synackpack.type = SYNACK;
         synackpack.seqnum = seqnum;
-        synackpack.checksum = 0; /* TODO... */
+        synackpack.checksum = 9086; /* TODO... */
         /*
         memset(&server, 0, sizeof(struct sockaddr_in));
         server.sin_family = AF_INET;
