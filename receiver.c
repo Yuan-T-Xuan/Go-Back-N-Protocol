@@ -54,6 +54,7 @@ int main(int argc, char *argv[])
 		perror("gbn_accept");
 		exit(-1);
 	}
+	printf("connected.\n");
 	
 	/*----- Reading from the socket and dumping it to the file -----*/
 	while(1){

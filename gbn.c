@@ -1,6 +1,6 @@
 #include "gbn.h"
 
-int currstate = 0; /* 0: off, 1: connected, */
+int currstate = 0; /* 0: off, 1: connected, 2: connected (receiver side), */
 int speedmode = 0; /* 0 for "slow" */
 
 int numtried = 0;
@@ -93,28 +93,25 @@ int gbn_connect(int sockfd, const struct sockaddr *server, socklen_t socklen){
     alarm(1);
     gbnhdronly synackpack;
 RCVAGAIN:
-    recvfrom(sockfd, &synackpack, sizeof(synackpack), 0, server, socklen);
+    recvfrom(sockfd, &synackpack, sizeof(gbnhdronly), 0, server, socklen);
     if(synackpack.type == SYNACK) {
         alarm(0);
+        currstate = 1;
         return 1;
     }
-    else
-        goto RCVAGAIN;
+    goto RCVAGAIN;
 }
 
 int gbn_listen(int sockfd, int backlog){
 
-    /* TODO: Your code here. */
-
-    return(-1);
+    /* TODO: */
+    return 0;
+    /*return(-1);*/
 }
 
 int gbn_bind(int sockfd, const struct sockaddr *server, socklen_t socklen){
-
-    /* TODO: Your code here. */
-
-    return(-1);
-}	
+    return bind(sockfd, server, socklen);
+}
 
 int gbn_socket(int domain, int type, int protocol){
         
@@ -122,15 +119,26 @@ int gbn_socket(int domain, int type, int protocol){
     srand((unsigned)time(0));
     
     signal(SIGALRM, handler);
-    return socket(AF_INET, SOCK_DGRAM, 0);
+    return socket(domain, type, protocol);
     
 }
 
-int gbn_accept(int sockfd, struct sockaddr *client, socklen_t *socklen){
-
-    /* TODO: Your code here. */
-
-    return(-1);
+int gbn_accept(int sockfd, struct sockaddr *client, socklen_t *socklen) {
+    gbnhdronly synpack, synackpack;
+RCVAGAIN:
+    recvfrom(sockfd, &synpack, sizeof(gbnhdronly), 0, client, socklen);
+    if(synpack.type == SYN) {
+        currstate = 2;
+        synseq = synpack.seqnum;
+        seqnum = synseq;
+        /* send back SYNACK */
+        synackpack.type = SYNACK;
+        synackpack.seqnum = seqnum;
+        synackpack.checksum = 0; /* TODO... */
+        sendto(sockfd, &synackpack, sizeof(gbnhdronly), 0, client, socklen);
+        return sockfd;
+    }
+    goto RCVAGAIN;
 }
 
 ssize_t maybe_sendto(int  s, const void *buf, size_t len, int flags, \
