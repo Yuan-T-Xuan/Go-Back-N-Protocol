@@ -10,6 +10,7 @@ gbnhdr prevhdr;
 int prevsockfd;
 struct sockaddr* prevserver;
 struct sockaddr_in prevclient;
+struct sockaddr_in tmp;
 socklen_t prevsocklen;
 
 int synseq;
@@ -107,7 +108,8 @@ int gbn_connect(int sockfd, const struct sockaddr *server, socklen_t socklen){
     gbnhdronly synackpack;
     
 RCVAGAIN:
-    recvfrom(sockfd, &synackpack, sizeof(gbnhdronly), 0, server, socklen);
+    recvfrom(sockfd, &synackpack, sizeof(gbnhdronly), 0, &tmp, socklen);
+    printf("received something ...\n");
     if(synackpack.type == SYNACK) {
         alarm(0);
         currstate = 1;
