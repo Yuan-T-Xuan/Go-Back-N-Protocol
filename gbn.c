@@ -111,6 +111,7 @@ RCVAGAIN:
     recvfrom(sockfd, &synackpack, sizeof(gbnhdronly), 0, &tmp, socklen);
     printf("received something ...\n");
     if(synackpack.type == SYNACK) {
+        printf("received SYNACK!\n");
         alarm(0);
         currstate = 1;
         return 1;
