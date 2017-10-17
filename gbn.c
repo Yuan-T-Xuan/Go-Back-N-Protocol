@@ -89,10 +89,23 @@ int gbn_connect(int sockfd, const struct sockaddr *server, socklen_t socklen){
     prevserver = server;
     prevsocklen = socklen;
     prevsockfd = sockfd;
+
+    /*
+    memset(&srcaddr, 0, sizeof(srcaddr));
+    srcaddr.sin_family = AF_INET;
+    srcaddr.sin_addr.s_addr = htonl(INADDR_ANY);
+    srcaddr.sin_port = htons(SRC_PORT);
+    */
+    memset(&prevclient, 0, sizeof(struct sockaddr_in));
+    prevclient.sin_family = AF_INET;
+    prevclient.sin_addr.s_addr = htonl(INADDR_ANY);
+    prevclient.sin_port = 56900 + (rand() % 100);
+    bind(sockfd, (struct sockaddr *) &prevclient, sizeof(prevclient));
     
     sendto(sockfd, &synpack, sizeof(gbnhdronly), 0, server, socklen);
     alarm(1);
     gbnhdronly synackpack;
+    
 RCVAGAIN:
     recvfrom(sockfd, &synackpack, sizeof(gbnhdronly), 0, server, socklen);
     if(synackpack.type == SYNACK) {
