@@ -163,6 +163,7 @@ RCVAGAIN:
         prevclient.sin_family = AF_INET;
         prevclient.sin_addr = tmp->sin_addr;
         prevclient.sin_port = tmp->sin_port;
+        printf("port: %d\n", prevclient.sin_port);
 
         sendto(sockfd, &synackpack, sizeof(gbnhdronly), 0, &prevclient, socklen);
         return sockfd;
