@@ -24,6 +24,7 @@ void handler(int signum) {
 
     if(prevtype == 0) {
         sendto(prevsockfd, &prevhdronly, sizeof(gbnhdronly), 0, prevserver, prevsocklen);
+        signal(SIGALRM, handler);
         alarm(1);
     } else {
         return;
