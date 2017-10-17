@@ -35,6 +35,9 @@ int main(void) {
         if (recvfrom(s, buf, BUFLEN, 0, &si_other, &slen)==-1)
             diep("recvfrom()");
         printf("Received packet from %s:%d\nData: %s\n\n", inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port), buf);
+        /* send back */
+        if(sendto(s, buf, BUFLEN, 0, &si_other, slen) == -1)
+            diep("send-back");
     }
     close(s);
     return 0;
