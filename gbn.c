@@ -111,7 +111,7 @@ int gbn_connect(int sockfd, const struct sockaddr *server, socklen_t socklen){
     gbnhdronly synackpack;
     
 RCVAGAIN:
-    recvfrom(sockfd, &synackpack, sizeof(gbnhdronly), 0, &tmp, socklen);
+    recvfrom(sockfd, &synackpack, sizeof(gbnhdronly), 0, &tmp, sizeof(struct sockaddr_in));
     printf("received something ...\n");
     if(synackpack.type == SYNACK) {
         printf("received SYNACK!\n");
