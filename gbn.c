@@ -13,6 +13,8 @@ struct sockaddr_in prevclient;
 struct sockaddr_in tmp;
 socklen_t prevsocklen;
 
+struct hostent *hehe;
+
 int synseq;
 int seqnum = -1;
 void handler(int signum) {
@@ -162,7 +164,9 @@ RCVAGAIN:
         struct sockaddr_in * tmp = (struct sockaddr_in *)client;
         memset(&prevclient, 0, sizeof(struct sockaddr_in));
         prevclient.sin_family = AF_INET;
-        prevclient.sin_addr = tmp->sin_addr;
+        /*prevclient.sin_addr = tmp->sin_addr;*/
+        hehe = gethostbyname("127.0.0.1");
+        prevclient.sin_addr = *(struct in_addr *)hehe->h_addr;
         prevclient.sin_port = tmp->sin_port;
         printf("port: %d\n", prevclient.sin_port);
 
