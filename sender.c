@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
     
     struct sockaddr_in si_me;
     si_me.sin_family = AF_INET;
-    si_me.sin_port = htons(28596);
+    si_me.sin_port = htons(28000 + rand()%1000);
     si_me.sin_addr.s_addr = htonl(INADDR_ANY);
     gbn_bind(sockfd, &si_me, sizeof(si_me));
 
@@ -52,10 +52,22 @@ int main(int argc, char *argv[]) {
         perror("gbn_connect");
         exit(-1);
     }
+
+    while ((numRead = fread(buf, 1, DATALEN * N, inputFile)) > 0) {
+        gbn_send(sockfd, buf, numRead, 0);
+    }
     
-    /*
-    ......
-    */
+    /*----- Closing the socket -----*/
+    if(gbn_close(sockfd) == -1) {
+        perror("gbn_close");
+        exit(-1);
+    }
+    
+    /*----- Closing the file -----*/
+    if(fclose(inputFile) == EOF) {
+        perror("fclose");
+        exit(-1);
+    }
 
     return(0);
 }
