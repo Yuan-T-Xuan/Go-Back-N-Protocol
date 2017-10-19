@@ -44,6 +44,7 @@ extern int errno;
 typedef struct {
     uint16_t checksum;        /* header and payload checksum                */
     uint8_t  type;            /* packet type (e.g. SYN, DATA, ACK, FIN)     */
+    uint8_t  padding;
     uint8_t data[DATALEN];    /* pointer to the payload                     */
     int  seqnum;              /* sequence number of the packet              */
     int  bodylen;
@@ -54,7 +55,7 @@ typedef struct {
     uint8_t  type;            /* packet type (e.g. SYN, DATA, ACK, FIN)     */
     uint8_t  padding;
     int  seqnum;              /* sequence number of the packet              */
-} gbnhdronly; // should I remove "packed"?
+} gbnhdronly;
 
 /* Shared states (but used somehow differently) */
 int beginseq;
@@ -345,10 +346,12 @@ RECVAGAIN:
     //printf("seqnum is %d should be ", received->seqnum);
     //printf("%d\n%d\n%d\n", currseq+lastdatalen, currseq, lastdatalen);
     //
+    
     if(received->seqnum == 1) {
         currseq = 1;
         lastdatalen = 0;
     }
+    
     //
     if(received->type == DATA && received->seqnum < currseq+lastdatalen) {
         gbnhdronly ulackpack;
@@ -372,9 +375,9 @@ RECVAGAIN:
         dataackpack.checksum = checksum(&dataackpack, sizeof(dataackpack)/2 );
         //
         sendto(sockfd, &dataackpack, sizeof(dataackpack), 0, &si_tmp, tmpsocklen);
-        /*for(int ii = 0; ii < received->bodylen; ii++) {
+        for(int ii = 0; ii < received->bodylen; ii++) {
             buf[ii] = received->data[ii];
-        }*/
+        }
         currseq = received->seqnum;
         lastdatalen = received->bodylen;
         return lastdatalen;
