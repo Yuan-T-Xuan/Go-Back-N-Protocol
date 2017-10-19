@@ -48,12 +48,13 @@ int main(int argc, char *argv[]) {
     server.sin_port   = htons(atoi(argv[2]));
     
     /*----- Connecting to the server -----*/
-    if (gbn_connect(sockfd, (struct sockaddr *)&server, socklen) == -1){
-        perror("gbn_connect");
+    if (gbn_connect(sockfd, (struct sockaddr *)&server, socklen) < 0){
+        printf("gbn_connect\n");
         exit(-1);
     }
 
     while ((numRead = fread(buf, 1, DATALEN * N, inputFile)) > 0) {
+        printf("sending...\n");
         gbn_send(sockfd, buf, numRead, 0);
     }
     

@@ -61,8 +61,7 @@ int main(int argc, char *argv[]) {
         } else if (numRead == 0) {
             break;
         }
-        printf("received one pack\n");
-        //sleep(1);
+        //printf("received one pack\n");
         fwrite(buf, 1, numRead, outputFile);
     }
 
