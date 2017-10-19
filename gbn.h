@@ -140,6 +140,7 @@ int gbn_connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
     gbnhdronly* received;
 RECVAGAIN:
     recvfrom(sockfd, &tmpbuf, sizeof(tmpbuf), 0, &si_tmp, &tmp_slen);
+    printf("received type: %d\n", tmpbuf.type);
     if(checksum(&tmpbuf, sizeof(tmpbuf)/2) != 0) {
         printf("checksum failed ...\n");
         goto RECVAGAIN;
@@ -229,9 +230,9 @@ RECVAGAIN:
             goto RECVAGAIN;
         }
         received = &tmpbuf;
-        //printf("received DATA-ACK?\n");
+        printf("received DATA-ACK? ");
         //printf("type: %d\n", received->type);
-        //printf("seqnum is %d\n", received->seqnum);
+        printf("seqnum is %d\n", received->seqnum);
         if(received->type == DATA) {
             //printf("strange ...\n");
             sendto(s, &prevsent1, sizeof(prevsent1), 0, serveraddr, serveraddrlen);
@@ -313,6 +314,22 @@ ssize_t gbn_recv(int sockfd, uint8_t *buf, size_t len, int flags) {
 RECVAGAIN:
     recvfrom(sockfd, &tmpbuf, sizeof(tmpbuf), 0, &si_tmp, &tmpsocklen);
     received = &tmpbuf;
+    printf("received type: %d\n", received->type);
+    if(received->type == SYN && received->seqnum == 0) {
+        if(checksum(&tmpbuf, sizeof(gbnhdronly)/2) != 0) {
+            printf("checksum failed ...\n");
+            goto RECVAGAIN;
+        }
+        gbnhdronly rsynackpack;
+        rsynackpack.type = SYNACK;
+        rsynackpack.seqnum = 0;
+        rsynackpack.checksum = 0;
+        //
+        rsynackpack.checksum = checksum(&rsynackpack, sizeof(rsynackpack)/2 );
+        //
+        sendto(sockfd, &rsynackpack, sizeof(rsynackpack), 0, &si_tmp, tmpsocklen);
+        goto RECVAGAIN;
+    }
     if(received->type == FIN && received->seqnum == 0) {
         if(checksum(&tmpbuf, sizeof(gbnhdronly)/2) != 0) {
             printf("checksum failed ...\n");
