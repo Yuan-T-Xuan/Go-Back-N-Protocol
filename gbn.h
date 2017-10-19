@@ -158,7 +158,7 @@ RECVAGAIN:
     }
 }
 
-int gbn_send(int s, const uint8_t *buf, size_t len, int flags) {
+int gbn_send(int s, char *buf, size_t len, int flags) {
     if(s != usingsockfd)
         return -1;
     /* ... */
@@ -255,13 +255,14 @@ RECVAGAIN:
 ssize_t gbn_recv(int sockfd, uint8_t *buf, size_t len, int flags) {
     if(sockfd != usingsockfd)
         return -1;
-    char tmpbuf[DATALEN + 10];
+    //char tmpbuf[DATALEN + 10];
+    gbnhdr tmpbuf;
     struct sockaddr_in si_tmp;
     int tmpsocklen;
     gbnhdr* received;
 RECVAGAIN:
-    recvfrom(sockfd, tmpbuf, DATALEN + 10, 0, &si_tmp, &tmpsocklen);
-    received = tmpbuf;
+    recvfrom(sockfd, &tmpbuf, sizeof(tmpbuf), 0, &si_tmp, &tmpsocklen);
+    received = &tmpbuf;
     printf("received!\n");
     printf("type: %d\n", received->type);
     printf("seqnum is %d should be ", received->seqnum);

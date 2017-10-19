@@ -63,7 +63,7 @@ int main(int argc, char *argv[]) {
         }
         printf("received one pack\n");
         //sleep(1);
-        //fwrite(buf, 1, numRead, outputFile);
+        fwrite(buf, 1, numRead, outputFile);
     }
 
     /*----- Closing the file -----*/
