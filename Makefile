@@ -23,11 +23,11 @@ CC              = gcc
 LD              = gcc
 AR              = ar
 
-CFLAGS          =  
-LFLAGS          = 
+CFLAGS          = -w
+LFLAGS          = -w
 
-SENDEROBJS	= sender.o gbn.o
-RECEIVEROBJS	= receiver.o gbn.o
+SENDEROBJS	= sender.o
+RECEIVEROBJS	= receiver.o
 ALLEXEC		= sender receiver
 
 .c.o:
@@ -49,3 +49,4 @@ realclean: clean
 
 tarball: realclean
 	tar cf - `ls -a | grep -v '^\.*$$' | grep -v '^proj[0-9].*\.tar\.gz'` | gzip > proj1-$(USER).tar.gz
+
