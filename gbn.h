@@ -23,8 +23,8 @@ extern int h_errno;
 extern int errno;
 
 /*----- Protocol parameters -----*/
-#define LOSS_PROB 1e-2    /* loss probability                            */
-#define CORR_PROB 1e-3    /* corruption probability                      */
+#define LOSS_PROB 0.02    /* loss probability                            */
+#define CORR_PROB 0.04    /* corruption probability                      */
 #define DATALEN   1024    /* length of the payload                       */
 #define N         1024    /* Max number of packets a single call to gbn_send can process */
 #define TIMEOUT      1    /* timeout to resend packets (1 second)        */
@@ -45,9 +45,9 @@ typedef struct {
     uint16_t checksum;        /* header and payload checksum                */
     uint8_t  type;            /* packet type (e.g. SYN, DATA, ACK, FIN)     */
     uint8_t  padding;
-    uint8_t data[DATALEN];    /* pointer to the payload                     */
     int  seqnum;              /* sequence number of the packet              */
     int  bodylen;
+    uint8_t data[DATALEN];    /* pointer to the payload                     */
 } gbnhdr;
 
 typedef struct {
@@ -87,6 +87,31 @@ uint16_t checksum(uint16_t *buf, int nwords) {
     return ~sum;
 }
 
+ssize_t maybe_sendto(int  s, const void *buf, size_t len, int flags, const struct sockaddr *to, socklen_t tolen) {
+    char *buffer = malloc(len);
+    memcpy(buffer, buf, len);
+    /*----- Packet not lost -----*/
+    if (rand() > LOSS_PROB*RAND_MAX) {
+        /*----- Packet corrupted -----*/
+        if (rand() < CORR_PROB*RAND_MAX) {
+            /*----- Selecting a random byte inside the packet -----*/
+            int index = (int)((len-1)*rand()/(RAND_MAX + 1.0));
+            /*----- Inverting a bit -----*/
+            char c = buffer[index];
+            if (c & 0x01) c &= 0xFE;
+            else c |= 0x01;
+            buffer[index] = c;
+        }
+        /*----- Sending the packet -----*/
+        int retval = sendto(s, buffer, len, flags, to, tolen);
+        free(buffer);
+        return retval;
+    }
+    /*----- Packet lost -----*/
+    else
+        return(len);  /* Simulate a success */
+}
+
 void handler(int signum) {
     /* handle timer alarm here */
     numtried++;
@@ -97,13 +122,13 @@ void handler(int signum) {
 
     if(prevsendtype == 0) {
         printf("resending SYN/FIN ...\n");
-        sendto(usingsockfd, &prevsent0, sizeof(prevsent0), 0, serveraddr, serveraddrlen);
+        maybe_sendto(usingsockfd, &prevsent0, sizeof(prevsent0), 0, serveraddr, serveraddrlen);
     } else {
         printf("resending DATA pack no. %d ...\n", prevsent1.seqnum);
-        sendto(usingsockfd, &prevsent1, sizeof(prevsent1), 0, serveraddr, serveraddrlen);
+        maybe_sendto(usingsockfd, &prevsent1, sizeof(prevsent1), 0, serveraddr, serveraddrlen);
     }
     signal(SIGALRM, handler);
-    alarm(4);
+    alarm(1);
 }
 
 int gbn_socket() {
@@ -132,8 +157,8 @@ int gbn_connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
     //
     beginseq = prevsent0.seqnum;
     currseq = prevsent0.seqnum;
-    sendto(sockfd, &prevsent0, sizeof(prevsent0), 0, addr, addrlen);
-    alarm(4);
+    maybe_sendto(sockfd, &prevsent0, sizeof(prevsent0), 0, addr, addrlen);
+    alarm(1);
     gbnhdronly tmpbuf;
     struct sockaddr_in si_tmp;
     int tmp_slen;
@@ -170,8 +195,8 @@ int gbn_close(int s) {
     }
     //
     currseq = prevsent0.seqnum;
-    sendto(s, &prevsent0, sizeof(prevsent0), 0, serveraddr, serveraddrlen);
-    alarm(4);
+    maybe_sendto(s, &prevsent0, sizeof(prevsent0), 0, serveraddr, serveraddrlen);
+    alarm(1);
     gbnhdronly received;
     struct sockaddr_in si_tmp;
     int tmp_slen;
@@ -221,10 +246,12 @@ int gbn_send(int s, char *buf, size_t len, int flags) {
         currseq = prevsent1.seqnum;
         //printf("currseq: %d ...\n", prevsent1.seqnum);
         printf("%d\n", prevsent1.seqnum);
-        sendto(s, &prevsent1, sizeof(prevsent1), 0, serveraddr, serveraddrlen);
-        alarm(4);
+        maybe_sendto(s, &prevsent1, sizeof(prevsent1), 0, serveraddr, serveraddrlen);
+        alarm(1);
 RECVAGAIN:
+        //printf("waiting here ...\n");
         recvfrom(s, &tmpbuf, sizeof(tmpbuf), 0, &si_tmp, &tmp_slen);
+        //printf("got something ...\n");
         if(checksum(&tmpbuf, sizeof(tmpbuf)/2) != 0) {
             printf("checksum failed ...\n");
             goto RECVAGAIN;
@@ -235,7 +262,7 @@ RECVAGAIN:
         printf("seqnum is %d\n", received->seqnum);
         if(received->type == DATA) {
             //printf("strange ...\n");
-            sendto(s, &prevsent1, sizeof(prevsent1), 0, serveraddr, serveraddrlen);
+            maybe_sendto(s, &prevsent1, sizeof(prevsent1), 0, serveraddr, serveraddrlen);
             goto RECVAGAIN;
         }
         else if(received->type == DATAACK) {
@@ -295,7 +322,7 @@ RECVAGAIN:
         //
         synackpack.checksum = checksum(&synackpack, sizeof(synackpack)/2 );
         //
-        sendto(sockfd, &synackpack, sizeof(synackpack), 0, clientaddr, clientaddrlen);
+        maybe_sendto(sockfd, &synackpack, sizeof(synackpack), 0, clientaddr, clientaddrlen);
         //printf("accepted.\n");
         return sockfd;
     } else {
@@ -327,7 +354,7 @@ RECVAGAIN:
         //
         rsynackpack.checksum = checksum(&rsynackpack, sizeof(rsynackpack)/2 );
         //
-        sendto(sockfd, &rsynackpack, sizeof(rsynackpack), 0, &si_tmp, tmpsocklen);
+        maybe_sendto(sockfd, &rsynackpack, sizeof(rsynackpack), 0, &si_tmp, tmpsocklen);
         goto RECVAGAIN;
     }
     if(received->type == FIN && received->seqnum == 0) {
@@ -335,6 +362,7 @@ RECVAGAIN:
             printf("checksum failed ...\n");
             goto RECVAGAIN;
         }
+        
         gbnhdronly finackpack;
         finackpack.type = FINACK;
         finackpack.seqnum = 0;
@@ -342,16 +370,16 @@ RECVAGAIN:
         //
         finackpack.checksum = checksum(&finackpack, sizeof(finackpack)/2 );
         //
-        sendto(sockfd, &finackpack, sizeof(finackpack), 0, &si_tmp, tmpsocklen);
-        sendto(sockfd, &finackpack, sizeof(finackpack), 0, &si_tmp, tmpsocklen);
-        sendto(sockfd, &finackpack, sizeof(finackpack), 0, &si_tmp, tmpsocklen);
-        sendto(sockfd, &finackpack, sizeof(finackpack), 0, &si_tmp, tmpsocklen);
-        sendto(sockfd, &finackpack, sizeof(finackpack), 0, &si_tmp, tmpsocklen);
-        sendto(sockfd, &finackpack, sizeof(finackpack), 0, &si_tmp, tmpsocklen);
-        sendto(sockfd, &finackpack, sizeof(finackpack), 0, &si_tmp, tmpsocklen);
-        sendto(sockfd, &finackpack, sizeof(finackpack), 0, &si_tmp, tmpsocklen);
-        sendto(sockfd, &finackpack, sizeof(finackpack), 0, &si_tmp, tmpsocklen);
-        sendto(sockfd, &finackpack, sizeof(finackpack), 0, &si_tmp, tmpsocklen);
+        maybe_sendto(sockfd, &finackpack, sizeof(finackpack), 0, &si_tmp, tmpsocklen);
+        maybe_sendto(sockfd, &finackpack, sizeof(finackpack), 0, &si_tmp, tmpsocklen);
+        maybe_sendto(sockfd, &finackpack, sizeof(finackpack), 0, &si_tmp, tmpsocklen);
+        maybe_sendto(sockfd, &finackpack, sizeof(finackpack), 0, &si_tmp, tmpsocklen);
+        maybe_sendto(sockfd, &finackpack, sizeof(finackpack), 0, &si_tmp, tmpsocklen);
+        maybe_sendto(sockfd, &finackpack, sizeof(finackpack), 0, &si_tmp, tmpsocklen);
+        maybe_sendto(sockfd, &finackpack, sizeof(finackpack), 0, &si_tmp, tmpsocklen);
+        maybe_sendto(sockfd, &finackpack, sizeof(finackpack), 0, &si_tmp, tmpsocklen);
+        maybe_sendto(sockfd, &finackpack, sizeof(finackpack), 0, &si_tmp, tmpsocklen);
+        maybe_sendto(sockfd, &finackpack, sizeof(finackpack), 0, &si_tmp, tmpsocklen);
         return 0;
     }
     if(checksum(&tmpbuf, sizeof(tmpbuf)/2) != 0) {
@@ -364,7 +392,7 @@ RECVAGAIN:
     //printf("%d\n%d\n%d\n", currseq+lastdatalen, currseq, lastdatalen);
     //
     
-    if(received->seqnum == 1) {
+    if(received->seqnum == 1 & currseq >1000000) {
         currseq = 1;
         lastdatalen = 0;
     }
@@ -379,8 +407,8 @@ RECVAGAIN:
         //
         ulackpack.checksum = checksum(&ulackpack, sizeof(ulackpack)/2 );
         //
-        sendto(sockfd, &ulackpack, sizeof(ulackpack), 0, &si_tmp, tmpsocklen);
-        //printf("getting earlier packs again... re-recv\n");
+        maybe_sendto(sockfd, &ulackpack, sizeof(ulackpack), 0, &si_tmp, tmpsocklen);
+        printf("getting earlier packs again... re-recv\n");
         goto RECVAGAIN;
     } else if(received->type == DATA && received->seqnum == currseq+lastdatalen) {
         gbnhdronly dataackpack;
@@ -391,7 +419,7 @@ RECVAGAIN:
         //
         dataackpack.checksum = checksum(&dataackpack, sizeof(dataackpack)/2 );
         //
-        sendto(sockfd, &dataackpack, sizeof(dataackpack), 0, &si_tmp, tmpsocklen);
+        maybe_sendto(sockfd, &dataackpack, sizeof(dataackpack), 0, &si_tmp, tmpsocklen);
         for(int ii = 0; ii < received->bodylen; ii++) {
             buf[ii] = received->data[ii];
         }
