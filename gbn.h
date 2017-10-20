@@ -68,7 +68,9 @@ socklen_t serveraddrlen;
 int prevsendtype;             /* 0 for hdronly */
 gbnhdronly prevsent0;
 gbnhdr prevsent1;
+gbnhdr prevsent2;
 int numtried;
+int sendsecond = 0;
 
 /* States used by receiver */
 struct sockaddr *clientaddr;
@@ -126,7 +128,11 @@ void handler(int signum) {
     } else {
         printf("resending DATA pack no. %d ...\n", prevsent1.seqnum);
         maybe_sendto(usingsockfd, &prevsent1, sizeof(prevsent1), 0, serveraddr, serveraddrlen);
+        // if(sendsecond) {
+        //     maybe_sendto(usingsockfd, &prevsent2, sizeof(prevsent2), 0, serveraddr, serveraddrlen);
+        // }
     }
+    sendsecond = 0;
     signal(SIGALRM, handler);
     alarm(1);
 }
@@ -225,7 +231,7 @@ int gbn_send(int s, char *buf, size_t len, int flags) {
     int tmp_slen;
     gbnhdronly* received;
     /* ... */
-    int i = 0, j;
+    int i = 0, j, t;
     while(i < len) {
         //printf("current i : %d\n", i);
         prevsent1.type = DATA;
@@ -248,6 +254,24 @@ int gbn_send(int s, char *buf, size_t len, int flags) {
         printf("%d\n", prevsent1.seqnum);
         maybe_sendto(s, &prevsent1, sizeof(prevsent1), 0, serveraddr, serveraddrlen);
         alarm(1);
+        /* send second DATA pack if in fast mode */
+        if(sendsecond && i + DATALEN < len) {
+            prevsent2.type = DATA;
+            prevsent2.seqnum = i + DATALEN + 1;
+            prevsent2.checksum = 0;
+            t = 0;
+            prevsent2.bodylen = 0;
+            while(t < DATALEN && (i+DATALEN+t) < len) {
+                prevsent2.data[t] = buf[i+DATALEN+t];
+                t++;
+                prevsent2.bodylen++;
+            }
+            prevsent2.checksum = checksum(&prevsent2, sizeof(prevsent2)/2 );
+            maybe_sendto(s, &prevsent2, sizeof(prevsent2), 0, serveraddr, serveraddrlen);
+        } else if(sendsecond) {
+            sendsecond = 0;
+        }
+        /* ... */
 RECVAGAIN:
         //printf("waiting here ...\n");
         recvfrom(s, &tmpbuf, sizeof(tmpbuf), 0, &si_tmp, &tmp_slen);
@@ -273,6 +297,7 @@ RECVAGAIN:
                 alarm(0);
                 numtried = 0;
                 i = i + j;
+                sendsecond = 1;
                 continue;
             } else {
                 //printf("broken package, receiving again ...\n");
